@@ -157,7 +157,14 @@ let init () =
 let update msg state =
     match msg with
     | StartGame ->
-        { state with GameState = Running }, state |> Commands.startTimer Const.startInterval
+        match state.GameState with
+        | Start ->
+            { state with GameState = Running } , state |> Commands.startTimer Const.startInterval
+        | Running ->
+            state, Cmd.none
+        | Lost ->
+            init () |> fst, Cmd.none
+        
     | ChangeDirection dir ->
         { state with CurrentDirection = dir }, Cmd.none
     | MoveNext ->
@@ -182,7 +189,7 @@ let update msg state =
         | Lost ->
             state, Commands.stopTimer state
         | Start ->
-            init () |> fst, Cmd.none
+            state, Cmd.none
 
     | SetTimer timer ->
         { state with Timer = timer }, Cmd.none
