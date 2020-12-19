@@ -1,0 +1,1 @@
+{"version":3,"sources":["webpack:///./src/style.sass"],"names":[],"mappings":"AAAA,UACI,gBACA,mBAGJ,wBACI,aAGJ,GACI,c","file":"0.style.css","sourcesContent":["body, html \r\n    overflow: hidden\r\n    background: #d0d0d0\r\n    \r\n\r\nbody::-webkit-scrollbar\r\n    display: none\r\n\r\n\r\nh1\r\n    font-size: 3em\r\n"],"sourceRoot":""}
