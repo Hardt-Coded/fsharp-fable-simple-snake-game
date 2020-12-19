@@ -182,7 +182,7 @@ let update msg state =
         | Lost ->
             state, Commands.stopTimer state
         | Start ->
-            state, Cmd.none
+            init () |> fst, Cmd.none
 
     | SetTimer timer ->
         { state with Timer = timer }, Cmd.none

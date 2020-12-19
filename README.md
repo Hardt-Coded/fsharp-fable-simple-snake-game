@@ -21,3 +21,9 @@ dotnet fable --run webpack
 
 
 ```
+
+### Play
+
+#### Use W,A,S,D to move the snake around!
+
+The key mapping you find in the subscription function.
