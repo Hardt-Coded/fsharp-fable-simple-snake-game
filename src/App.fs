@@ -239,6 +239,76 @@ let drawPlayground width heigth =
             ]
         ]
     ]
+  
+let brick x y w h color (content:ReactElement list) =
+    Html.div [
+        prop.style [
+            style.position.absolute
+            style.left (Const.bricksize + x * Const.bricksize)
+            style.top (Const.bricksize + y * Const.bricksize)
+            style.width (Const.bricksize * w)
+            style.height (Const.bricksize * h)
+            style.backgroundColor color
+            style.display.flex
+            style.alignItems.center
+            style.justifyContent.center
+        ]
+        prop.children content
+    ]
+    
+ 
+
+let drawPad dispatch =
+    Html.div [
+        // Up
+        brick 11 32 5 5 "#606060" [
+            Html.h1 [
+                prop.style [
+                    style.fontSize 90
+                ]
+                prop.text "🔼"
+                prop.onClick (fun _ -> dispatch (ChangeDirection Up))
+            ]
+        ]
+
+
+        // Left
+        brick 5 38 5 5 "#606060" [
+            Html.h1 [
+                prop.style [
+                    style.transform.rotate 270
+                    style.fontSize 90
+                ]
+                prop.text "🔼"
+                prop.onClick (fun _ -> dispatch (ChangeDirection Left))
+            ]
+        ]
+
+        // Down
+        brick 11 38 5 5 "#606060" [
+            Html.h1 [
+                prop.style [
+                    style.transform.rotate 180
+                    style.fontSize 90
+                ]
+                prop.text "🔼"
+                prop.onClick (fun _ -> dispatch (ChangeDirection Down))
+            ]
+        ]
+
+        // Right
+        brick 17 38 5 5 "#606060" [
+            Html.h1 [
+                prop.style [
+                    style.transform.rotate 90
+                    style.fontSize 90
+                ]
+                prop.text "🔼"
+                prop.onClick (fun _ -> dispatch (ChangeDirection Right))
+            ]
+        ]
+
+    ]
     
 
 let view state dispatch =
@@ -285,9 +355,11 @@ let view state dispatch =
                 ]
             ]
 
+        drawPad dispatch
+
         match state.GameState with
         | Running ->
-            ()
+            drawPad dispatch
         | Lost ->
             Html.div [
                 prop.style [
