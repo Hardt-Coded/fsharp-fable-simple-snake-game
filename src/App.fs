@@ -31,7 +31,6 @@ type GameState =
     | Lost
 
 
-
 type Model = {
     Score: int
     Snake: (int * int) list
@@ -40,6 +39,7 @@ type Model = {
     GameState: GameState
     Timer: int option
 }
+
 
 type Msg =
     | MoveNext
@@ -51,25 +51,23 @@ type Msg =
 
 
 
-
-
-
-module Direction =
-    
-    let toVector direction =
-        match direction with
-        | Up    -> (0,-1)
-        | Down  -> (0,1)
-        | Left  -> (-1,0)
-        | Right -> (1,0)
-
 module Snake =
+
+    module private Direction =
+    
+        let toVector direction =
+            match direction with
+            | Up    -> (0,-1)
+            | Down  -> (0,1)
+            | Left  -> (-1,0)
+            | Right -> (1,0)
 
     let calcMove direction snake =
         let vx,vy = direction |> Direction.toVector
         let hx,hy = snake |> List.head
         let nx,ny = hx + vx, hy + vy
         (nx,ny) :: snake.[0..snake.Length-2]
+
 
     let private isCollided snake =
         let (x,y) = snake |> List.head
@@ -90,6 +88,7 @@ module Snake =
         let hx,hy = snake |> List.head
         let nx,ny = hx + vx, hy + vy
         (nx,ny) :: snake
+
 
     let private gotApple applePos snake =
         let snakePos = snake |> List.head
@@ -195,7 +194,6 @@ let update msg state =
         { state with Timer = timer }, Cmd.none
 
 
-
 let drawPlayground width heigth =
     Html.div [
         Html.div [
@@ -240,6 +238,7 @@ let drawPlayground width heigth =
         ]
     ]
   
+
 let brick x y w h color (content:ReactElement list) =
     Html.div [
         prop.style [
@@ -255,7 +254,6 @@ let brick x y w h color (content:ReactElement list) =
         ]
         prop.children content
     ]
-    
  
 
 let drawPad dispatch =
@@ -402,8 +400,6 @@ let view state dispatch =
     ]
 
 
-open Fable.Core.JsInterop
-open Fable.Core
 open Browser.Types
 
 let subscription (state:Model) =
@@ -427,8 +423,6 @@ let subscription (state:Model) =
 
 
 open Elmish.React
-
-
 
 
 Program.mkProgram init update view
