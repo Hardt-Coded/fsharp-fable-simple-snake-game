@@ -8,8 +8,8 @@ let rnd = System.Random()
 
 module Const =
 
-    let width = 30
-    let height = 30
+    //let width = 30
+    //let height = 30
     
     let bricksize = 30
     
@@ -32,6 +32,11 @@ type GameState =
 
 
 type Model = {
+    X:int
+    Y:int
+    Width: int
+    Height: int
+    StartLevel: int
     Score: int
     Snake: (int * int) list
     Apple: (int * int)
@@ -47,9 +52,12 @@ type Msg =
     | SetTimer of int option
     | StartGame
 
+module Helpers =
 
-
-
+    let parseIntWithDefault defa (str:string) =
+        match System.Int32.TryParse str with
+        | true, x -> x
+        | false, _ -> defa
 
 module Snake =
 
@@ -69,12 +77,12 @@ module Snake =
         (nx,ny) :: snake.[0..snake.Length-2]
 
 
-    let private isCollided snake =
+    let private isCollided width height snake =
         let (x,y) = snake |> List.head
         match x,y with
         | -1,_  -> true
         | _, -1 -> true
-        | x, y when x = Const.width || y = Const.height ->
+        | x, y when x = width || y = height ->
             true
         | _, _ -> 
             // check collision with its own
@@ -95,8 +103,8 @@ module Snake =
         applePos = snakePos
 
 
-    let (|IsCollided|GotApple|AllGood|) (applePos,snake) =
-        if isCollided snake then IsCollided
+    let (|IsCollided|GotApple|AllGood|) (width,height,applePos,snake) =
+        if isCollided width height snake then IsCollided
         elif gotApple applePos snake then GotApple
         else AllGood
     
@@ -138,19 +146,49 @@ module Commands =
         |> Cmd.ofSub
 
 
+    open Browser.Types
 
-let init () =
-    let newApple = (rnd.Next(0, Const.width), rnd.Next (0, Const.height))
+    let subscribeKeys =
+        fun dispatch ->
+            Browser.Dom.document.addEventListener ("keydown", 
+            (fun e ->
+                let keyev = e :?> KeyboardEvent
+                match keyev.key with
+                | "w" -> dispatch (ChangeDirection Up)
+                | "d" -> dispatch (ChangeDirection Right)
+                | "a" -> dispatch (ChangeDirection Left)
+                | "s" -> dispatch (ChangeDirection Down)
+                | _ ->
+                    ()
+            )
+            ) |> ignore
+        |> Cmd.ofSub
+
+open System
+
+let init x y width height startLevel =
+    let startLevel = startLevel |> Helpers.parseIntWithDefault 0
+    let x = x |> Helpers.parseIntWithDefault 0
+    let y = y |> Helpers.parseIntWithDefault 0
+    let width = width |> Helpers.parseIntWithDefault 30
+    let height = height |> Helpers.parseIntWithDefault 30
+        
+    let newApple = (rnd.Next(0, width), rnd.Next (0, height))
     let state =
         {
-            Score = 0
+            X = x
+            Y = y
+            Width = width
+            Height = height
+            StartLevel = startLevel
+            Score = startLevel
             Snake = Const.initSnake
             Apple = newApple
             CurrentDirection = Right
             GameState = Start
             Timer = None
         }
-    state, Cmd.none
+    state, Commands.subscribeKeys
 
 
 let update msg state =
@@ -162,7 +200,7 @@ let update msg state =
         | Running ->
             state, Cmd.none
         | Lost ->
-            init () |> fst, Cmd.none
+            init (state.X |> string) (state.Y |> string) (state.Width |> string) (state.Height |> string) (state.StartLevel |> string) |> fst, Cmd.none
         
     | ChangeDirection dir ->
         { state with CurrentDirection = dir }, Cmd.none
@@ -170,14 +208,14 @@ let update msg state =
         match state.GameState with
         | Running ->
             let newSnake = Snake.calcMove state.CurrentDirection state.Snake
-            match (state.Apple,newSnake) with
+            match (state.Width,state.Height, state.Apple, newSnake) with
             | Snake.IsCollided ->
                 { state with GameState = Lost }, Cmd.none
             | Snake.GotApple ->
                 let newSnake = Snake.calcCatch state.CurrentDirection state.Snake
                 let newScore = state.Score + 1
                 let newTimerInverall = (100 - newScore) * Const.startInterval / 100
-                let newApple = (rnd.Next(0, Const.width), rnd.Next (0, Const.height))
+                let newApple = (rnd.Next(0, state.Width), rnd.Next (0, state.Height))
                 { state with 
                     Snake = newSnake
                     Score = state.Score + 1 
@@ -194,13 +232,13 @@ let update msg state =
         { state with Timer = timer }, Cmd.none
 
 
-let drawPlayground width heigth =
+let drawPlayground x y width height =
     Html.div [
         Html.div [
             prop.style [
                 style.position.absolute
-                style.left 0
-                style.top 0
+                style.left (x * 30)
+                style.top (y * 30)
                 style.backgroundColor "#00c000"
                 style.width (Const.bricksize * (width + 2))
                 style.height Const.bricksize
@@ -209,28 +247,28 @@ let drawPlayground width heigth =
         Html.div [
             prop.style [
                 style.position.absolute
-                style.left 0
-                style.top 0
+                style.left (x * 30)
+                style.top (y * 30)
                 style.backgroundColor "#00c000"
                 style.width Const.bricksize
-                style.height (Const.bricksize * (Const.height + 2))
+                style.height (Const.bricksize * (height + 2))
             ]
         ]
         Html.div [
             prop.style [
                 style.position.absolute
-                style.left (Const.bricksize * (width + 1))
-                style.top 0
+                style.left (Const.bricksize * (x + width + 1))
+                style.top (y * 30)
                 style.backgroundColor "#00c000"
                 style.width Const.bricksize
-                style.height (Const.bricksize * (Const.height + 2))
+                style.height (Const.bricksize * (height + 2))
             ]
         ]
         Html.div [
             prop.style [
                 style.position.absolute
-                style.left 0
-                style.top (30 * (Const.height + 1))
+                style.left (x * 30)
+                style.top (30 * (y + height + 1))
                 style.backgroundColor "#00c000"
                 style.width (Const.bricksize * (width + 2))
                 style.height Const.bricksize
@@ -256,10 +294,10 @@ let brick x y w h color (content:ReactElement list) =
     ]
  
 
-let drawPad dispatch =
+let drawPad width height dispatch =
     Html.div [
         // Up
-        brick 11 32 5 5 "#606060" [
+        brick 11 (height + 5) 5 5 "#606060" [
             Html.h1 [
                 prop.style [
                     style.fontSize 90
@@ -271,7 +309,7 @@ let drawPad dispatch =
 
 
         // Left
-        brick 5 38 5 5 "#606060" [
+        brick 5 (height + 11) 5 5 "#606060" [
             Html.h1 [
                 prop.style [
                     style.transform.rotate 270
@@ -283,7 +321,7 @@ let drawPad dispatch =
         ]
 
         // Down
-        brick 11 38 5 5 "#606060" [
+        brick 11 (height + 11) 5 5 "#606060" [
             Html.h1 [
                 prop.style [
                     style.transform.rotate 180
@@ -295,7 +333,7 @@ let drawPad dispatch =
         ]
 
         // Right
-        brick 17 38 5 5 "#606060" [
+        brick 17 (height + 11) 5 5 "#606060" [
             Html.h1 [
                 prop.style [
                     style.transform.rotate 90
@@ -311,18 +349,15 @@ let drawPad dispatch =
 
 let view state dispatch =
     Html.div [
-        drawPlayground Const.width Const.height
+        drawPlayground state.X state.Y state.Width state.Height
         Html.div [
             prop.style [
                 style.position.absolute
-                style.left Const.bricksize
-                style.top Const.bricksize
+                style.left (Const.bricksize * (state.X + 1))
+                style.top (Const.bricksize * (state.Y))
             ]
             prop.children [
-                //Html.p $"{state.CurrentDirection}"
-                //Html.p $"{state.GameState}"
                 Html.h1 $"Score: {state.Score}"
-                //Html.p $"X: {state.Snake |> List.head |> fst} Y:{state.Snake |> List.head |> snd}"
             ]
         ]
         
@@ -332,8 +367,8 @@ let view state dispatch =
         Html.div [
             prop.style [
                 style.position.absolute
-                style.left (Const.bricksize + ax * Const.bricksize)
-                style.top (Const.bricksize + ay * Const.bricksize)
+                style.left (Const.bricksize + (ax + state.X) * Const.bricksize)
+                style.top (Const.bricksize + (ay + state.Y) * Const.bricksize)
                 style.backgroundColor "#c00000"
                 style.width Const.bricksize
                 style.height Const.bricksize
@@ -345,25 +380,23 @@ let view state dispatch =
             Html.div [
                 prop.style [
                     style.position.absolute
-                    style.left (Const.bricksize + x * Const.bricksize)
-                    style.top (Const.bricksize + y * Const.bricksize)
+                    style.left (Const.bricksize + (x + state.X) * Const.bricksize)
+                    style.top (Const.bricksize + (y + state.Y) * Const.bricksize)
                     style.backgroundColor "#00c0c0"
                     style.width Const.bricksize
                     style.height Const.bricksize
                 ]
             ]
 
-        drawPad dispatch
-
         match state.GameState with
         | Running ->
-            drawPad dispatch
+            drawPad state.Width state.Height dispatch
         | Lost ->
             Html.div [
                 prop.style [
                     style.position.absolute
-                    style.left (Const.bricksize + 11 * Const.bricksize)
-                    style.top (Const.bricksize + 12 * Const.bricksize)
+                    style.left (Const.bricksize + (state.Width / 2 + state.X - 2) * Const.bricksize)
+                    style.top (Const.bricksize + (state.Height / 2 + state.Y - 2) * Const.bricksize)
                 ]
                 prop.children [
                     Html.h1 "You Loose!"
@@ -381,8 +414,8 @@ let view state dispatch =
             Html.div [
                 prop.style [
                     style.position.absolute
-                    style.left (Const.bricksize + 11 * Const.bricksize)
-                    style.top (Const.bricksize + 12 * Const.bricksize)
+                    style.left (Const.bricksize + (state.Width / 2 + state.X - 2) * Const.bricksize)
+                    style.top (Const.bricksize + (state.Height / 2 + state.Y - 2) * Const.bricksize)
                 ]
                 prop.children [
                     Html.h1 "Ready?"
@@ -400,35 +433,3 @@ let view state dispatch =
     ]
 
 
-open Browser.Types
-
-let subscription (state:Model) =
-    fun dispatch ->
-        Browser.Dom.document.addEventListener ("keydown", 
-            (fun e ->
-                let keyev = e :?> KeyboardEvent
-                match keyev.key with
-                | "w" -> dispatch (ChangeDirection Up)
-                | "d" -> dispatch (ChangeDirection Right)
-                | "a" -> dispatch (ChangeDirection Left)
-                | "s" -> dispatch (ChangeDirection Down)
-                | _ ->
-                    ()
-            )
-        ) |> ignore
-
-        
-
-    |> Cmd.ofSub
-
-
-open Elmish.React
-
-
-Program.mkProgram init update view
-#if DEBUG
-|> Program.withConsoleTrace
-#endif
-|> Program.withSubscription subscription
-|> Program.withReactSynchronous "elmish-app"
-|> Program.run
